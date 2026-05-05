@@ -129,6 +129,18 @@ export default class MediaControls extends Extension {
 
     /**
      * @public
+     * @type {boolean}
+     */
+    coloredPlayerIconMenu;
+
+    /**
+     * @public
+     * @type {number}
+     */
+    coverArtRadius;
+
+    /**
+     * @public
      * @type {ExtensionPositions}
      */
     extensionPosition;
@@ -335,6 +347,8 @@ export default class MediaControls extends Extension {
         this.showControlIconsSeekForward = this.settings.get_boolean("show-control-icons-seek-forward");
         this.showControlIconsSeekBackward = this.settings.get_boolean("show-control-icons-seek-backward");
         this.coloredPlayerIcon = this.settings.get_boolean("colored-player-icon");
+        this.coloredPlayerIconMenu = this.settings.get_boolean("colored-player-icon-menu");
+        this.coverArtRadius = this.settings.get_uint("cover-art-radius");
         this.extensionPosition = enumValueByIndex(ExtensionPositions, this.settings.get_enum("extension-position"));
         this.extensionIndex = this.settings.get_uint("extension-index");
         this.elementsOrder = /** @type {ElementsOrder} */ (this.settings.get_strv("elements-order"));
@@ -410,6 +424,14 @@ export default class MediaControls extends Extension {
         this.settings.connect("changed::colored-player-icon", () => {
             this.coloredPlayerIcon = this.settings.get_boolean("colored-player-icon");
             this.panelBtn?.updateWidgets(WidgetFlags.PANEL_ICON);
+        });
+        this.settings.connect("changed::colored-player-icon-menu", () => {
+            this.coloredPlayerIconMenu = this.settings.get_boolean("colored-player-icon-menu");
+            this.panelBtn?.updateWidgets(WidgetFlags.MENU_PLAYERS);
+        });
+        this.settings.connect("changed::cover-art-radius", () => {
+            this.coverArtRadius = this.settings.get_uint("cover-art-radius");
+            this.panelBtn?.updateWidgets(WidgetFlags.MENU_IMAGE);
         });
         this.settings.connect("changed::extension-position", () => {
             const enumIndex = this.settings.get_enum("extension-position");
@@ -770,6 +792,8 @@ export default class MediaControls extends Extension {
         this.showControlIconsSeekForward = null;
         this.showControlIconsSeekBackward = null;
         this.coloredPlayerIcon = null;
+        this.coloredPlayerIconMenu = null;
+        this.coverArtRadius = null;
         this.extensionPosition = null;
         this.extensionIndex = null;
         this.elementsOrder = null;

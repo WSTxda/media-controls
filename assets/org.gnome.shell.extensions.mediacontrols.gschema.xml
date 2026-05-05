@@ -70,6 +70,12 @@
     <key name="colored-player-icon" type="b">
       <default>true</default>
     </key>
+    <key name="colored-player-icon-menu" type="b">
+      <default>true</default>
+    </key>
+    <key name="cover-art-radius" type="u">
+      <default>0</default>
+    </key>
     <key name="extension-position" enum="org.gnome.shell.extensions.mediacontrols.positions">
       <default>'Center'</default>
     </key>

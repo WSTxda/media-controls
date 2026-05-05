@@ -15,7 +15,6 @@ import St from "gi://St";
 import * as PanelMenu from "resource:///org/gnome/shell/ui/panelMenu.js";
 import * as PopupMenu from "resource:///org/gnome/shell/ui/popupMenu.js";
 import { gettext as _ } from "resource:///org/gnome/shell/extensions/extension.js";
-import * as Config from 'resource:///org/gnome/shell/misc/config.js';
 
 import ScrollingLabel from "./ScrollingLabel.js";
 import MenuSlider from "./MenuSlider.js";
@@ -176,6 +175,15 @@ class PanelButton extends PanelMenu.Button {
         this.initActions();
         // @ts-expect-error
         this.menu.box.add_style_class_name("popup-menu-container");
+        // Refresh the slider whenever the menu is opened. Clutter pauses
+        // PropertyTransitions on unmapped actors, so the slider's elapsed
+        // time drifts from the player's real position while the menu is
+        // closed. Re-fetch the position on open and (re)start the transition.
+        this.menu.connect("open-state-changed", (_, isOpen) => {
+            if (isOpen && this.extension.showTrackSlider && this.menuSlider != null) {
+                this.addMenuSlider().catch(errorLog);
+            }
+        });
         this.connect("destroy", this.onDestroy.bind(this));
     }
 
@@ -320,9 +328,22 @@ class PanelButton extends PanelMenu.Button {
                 marginBottom: 3,
             });
         }
+        const menuColoredClass = this.extension.coloredPlayerIconMenu ? "colored-icon" : "symbolic-icon";
+        if (
+            this.menuPlayersTextBoxIcon != null &&
+            !this.menuPlayersTextBoxIcon.has_style_class_name(menuColoredClass)
+        ) {
+            // -st-icon-style is only read when St (re)builds the icon pipeline,
+            // so toggling the class on an existing icon does nothing. Recreate.
+            if (this.menuPlayersTextBoxIcon.get_parent() != null) {
+                this.menuPlayersTextBox.remove_child(this.menuPlayersTextBoxIcon);
+            }
+            this.menuPlayersTextBoxIcon.destroy();
+            this.menuPlayersTextBoxIcon = null;
+        }
         if (this.menuPlayersTextBoxIcon == null) {
             this.menuPlayersTextBoxIcon = new St.Icon({
-                styleClass: "popup-menu-icon",
+                styleClass: `popup-menu-icon ${menuColoredClass}`,
                 yAlign: Clutter.ActorAlign.END,
                 xAlign: Clutter.ActorAlign.END,
                 xExpand: true,
@@ -420,7 +441,7 @@ class PanelButton extends PanelMenu.Button {
             }
             if (players.length > 1) {
                 const icon = new St.Icon({
-                    styleClass: "popup-menu-icon popup-menu-player-icons-icon",
+                    styleClass: `popup-menu-icon popup-menu-player-icons-icon ${menuColoredClass}`,
                     gicon: appIcon,
                     reactive: isPinned === false,
                     trackHover: isPinned === false,
@@ -516,7 +537,18 @@ class PanelButton extends PanelMenu.Button {
             if (pixbuf != null) {
                 const aspectRatio = pixbuf.width / pixbuf.height;
                 const height = width / aspectRatio;
-                const [success, buffer] = pixbuf.save_to_bufferv("png", [], []);
+                const radius = this.extension.coverArtRadius;
+                let renderPixbuf = pixbuf;
+                if (radius > 0) {
+                    // Scale to display size before rounding so the radius
+                    // matches the user's setting in screen pixels rather than
+                    // being shrunk by the St scaling step.
+                    const targetW = Math.max(1, Math.round(width));
+                    const targetH = Math.max(1, Math.round(height));
+                    const scaled = pixbuf.scale_simple(targetW, targetH, GdkPixbuf.InterpType.BILINEAR);
+                    renderPixbuf = this.roundPixbufCorners(scaled ?? pixbuf, radius);
+                }
+                const [success, buffer] = renderPixbuf.save_to_bufferv("png", [], []);
                 if (success) {
                     const bytes = GLib.Bytes.new(buffer);
                     const icon = Gio.BytesIcon.new(bytes);
@@ -540,6 +572,82 @@ class PanelButton extends PanelMenu.Button {
             this.menuBox.insert_child_above(this.menuImage, this.menuPlayers);
             debugLog("Added menu image");
         }
+    }
+
+    /**
+     * Returns a copy of the pixbuf with the four corners cut to a rounded
+     * rectangle by zeroing the alpha channel of pixels outside the corner arcs.
+     *
+     * @private
+     * @param {GdkPixbuf.Pixbuf} pixbuf
+     * @param {number} radius
+     * @returns {GdkPixbuf.Pixbuf}
+     */
+    roundPixbufCorners(pixbuf, radius) {
+        let src = pixbuf;
+        if (!src.get_has_alpha()) {
+            src = src.add_alpha(false, 0, 0, 0);
+        }
+        const w = src.get_width();
+        const h = src.get_height();
+        const r = Math.min(Math.floor(radius), Math.floor(Math.min(w, h) / 2));
+        if (r <= 0) {
+            return src;
+        }
+        const rowstride = src.get_rowstride();
+        const channels = src.get_n_channels();
+        const pixels = new Uint8Array(src.get_pixels());
+        // 4x4 supersample offsets (0.125, 0.375, 0.625, 0.875) for anti-aliasing
+        // the corner arcs. Each pixel's coverage is the fraction of its 16
+        // subsamples that fall inside the arc; that scales the alpha channel.
+        const samples = [0.125, 0.375, 0.625, 0.875];
+        const subN = samples.length * samples.length;
+        const r2 = r * r;
+        for (let y = 0; y < h; y++) {
+            let cy;
+            if (y < r) {
+                cy = r;
+            } else if (y >= h - r) {
+                cy = h - r;
+            } else {
+                continue;
+            }
+            for (let x = 0; x < w; x++) {
+                let cx;
+                if (x < r) {
+                    cx = r;
+                } else if (x >= w - r) {
+                    cx = w - r;
+                } else {
+                    continue;
+                }
+                let inside = 0;
+                for (let sy = 0; sy < samples.length; sy++) {
+                    const dy = y + samples[sy] - cy;
+                    const dy2 = dy * dy;
+                    for (let sx = 0; sx < samples.length; sx++) {
+                        const dx = x + samples[sx] - cx;
+                        if (dx * dx + dy2 <= r2) {
+                            inside++;
+                        }
+                    }
+                }
+                if (inside === subN) {
+                    continue;
+                }
+                const offset = y * rowstride + x * channels + 3;
+                pixels[offset] = Math.round((pixels[offset] * inside) / subN);
+            }
+        }
+        return GdkPixbuf.Pixbuf.new_from_bytes(
+            GLib.Bytes.new(pixels),
+            src.get_colorspace(),
+            src.get_has_alpha(),
+            src.get_bits_per_sample(),
+            w,
+            h,
+            rowstride,
+        );
     }
 
     /**
@@ -1057,38 +1165,63 @@ class PanelButton extends PanelMenu.Button {
      * @returns {void}
      */
     initActions() {
-        this.connect("button-press-event", (_, /** @type {Clutter.Event} */ event) => {
-            const button = event.get_button();
+        if (typeof Clutter.ClickGesture !== "undefined") {
+            // GNOME 50 replaced PanelMenu.Button's vfunc_event with a
+            // Clutter.ClickGesture, so button-press-event no longer fires
+            // reliably for non-primary buttons. Disable the parent's gesture
+            // (which only toggles the menu on left click) and install our own
+            // per-button gestures so right/middle clicks work again.
+            if (this._clickGesture && typeof this._clickGesture.set_enabled === "function") {
+                this._clickGesture.set_enabled(false);
+            }
 
-            if (button === Clutter.BUTTON_PRIMARY) {
-                this.handleLeftClick();
+            this.addPanelClickGesture(Clutter.BUTTON_PRIMARY, () => this.handleLeftClick());
+            this.addPanelClickGesture(Clutter.BUTTON_MIDDLE, () => {
+                const action = this.extension.mouseActionMiddle;
+                if (action !== MouseActions.NONE) {
+                    this.doMouseAction(action);
+                }
+            });
+            this.addPanelClickGesture(Clutter.BUTTON_SECONDARY, () => {
+                const action = this.extension.mouseActionRight;
+                if (action !== MouseActions.NONE) {
+                    this.doMouseAction(action);
+                }
+            });
+        } else {
+            this.connect("button-press-event", (_, /** @type {Clutter.Event} */ event) => {
+                const button = event.get_button();
+
+                if (button === Clutter.BUTTON_PRIMARY) {
+                    this.handleLeftClick();
+                    return Clutter.EVENT_STOP;
+                }
+
+                let action;
+                if (button === Clutter.BUTTON_MIDDLE) {
+                    action = this.extension.mouseActionMiddle;
+                } else if (button === Clutter.BUTTON_SECONDARY) {
+                    action = this.extension.mouseActionRight;
+                }
+
+                if (action === MouseActions.NONE) {
+                    return Clutter.EVENT_PROPAGATE;
+                }
+
+                this.doMouseAction(action);
                 return Clutter.EVENT_STOP;
-            }
+            });
 
-            let action;
-            if (button === Clutter.BUTTON_MIDDLE) {
-                action = this.extension.mouseActionMiddle;
-            } else if (button === Clutter.BUTTON_SECONDARY) {
-                action = this.extension.mouseActionRight;
-            }
+            this.connect("touch-event", (_, /** @type {Clutter.Event} */ event) => {
+                const eventType = event.type();
+                if (eventType === Clutter.EventType.TOUCH_BEGIN) {
+                    this.handleLeftClick();
+                    return Clutter.EVENT_STOP;
+                }
 
-            if (action === MouseActions.NONE) {
                 return Clutter.EVENT_PROPAGATE;
-            }
-
-            this.doMouseAction(action);
-            return Clutter.EVENT_STOP;
-        });
-
-        this.connect("touch-event", (_, /** @type {Clutter.Event} */ event) => {
-            const eventType = event.type();
-            if (eventType === Clutter.EventType.TOUCH_BEGIN) {
-                this.handleLeftClick();
-                return Clutter.EVENT_STOP;
-            }
-
-            return Clutter.EVENT_PROPAGATE;
-        });
+            });
+        }
 
         this.connect("scroll-event", (_, /** @type {Clutter.Event} */ event) => {
             const direction = event.get_scroll_direction();
@@ -1099,6 +1232,27 @@ class PanelButton extends PanelMenu.Button {
             }
             return Clutter.EVENT_STOP;
         });
+    }
+
+    /**
+     * @private
+     * @param {number} button
+     * @param {() => void} callback
+     * @returns {void}
+     */
+    addPanelClickGesture(button, callback) {
+        const gesture = new Clutter.ClickGesture();
+        if (typeof gesture.set_required_button === "function") {
+            gesture.set_required_button(button);
+        }
+        if (typeof gesture.set_recognize_on_press === "function") {
+            gesture.set_recognize_on_press(true);
+        }
+        gesture.connect("recognize", () => {
+            callback();
+            return Clutter.EVENT_STOP;
+        });
+        this.add_action(gesture);
     }
 
     handleLeftClick() {

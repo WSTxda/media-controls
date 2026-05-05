@@ -91,6 +91,31 @@
     </child>
     <child>
       <object class="AdwPreferencesGroup">
+        <property name="title" translatable="yes">Popup menu</property>
+        <child>
+          <object class="AdwSwitchRow" id="sr-general-colored-player-menu">
+            <property name="title" translatable="yes">Colored player icon</property>
+            <property name="subtitle" translatable="yes">Use the app's colored icon in the popup. Disable to use the symbolic variant.</property>
+          </object>
+        </child>
+        <child>
+          <object class="AdwSpinRow" id="sr-general-cover-art-radius">
+            <property name="title" translatable="yes">Cover art corner radius</property>
+            <property name="subtitle" translatable="yes">Round the corners of the cover art (in pixels). 0 disables rounding.</property>
+            <property name="adjustment">
+              <object class="GtkAdjustment">
+                <property name="lower">0</property>
+                <property name="upper">50</property>
+                <property name="step-increment">1</property>
+                <property name="value">0</property>
+              </object>
+            </property>
+          </object>
+        </child>
+      </object>
+    </child>
+    <child>
+      <object class="AdwPreferencesGroup">
         <property name="title" translatable="yes">Information</property>
         <child>
           <object class="AdwActionRow">

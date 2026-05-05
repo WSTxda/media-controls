@@ -275,6 +275,8 @@ export default class MediaControlsPreferences extends ExtensionPreferences {
         this.bindSetting("show-control-icons-seek-backward", "sr-panel-show-seek-backward", "active");
         this.bindSetting("show-player-icon", "sr-panel-show-player", "active");
         this.bindSetting("colored-player-icon", "sr-panel-colored-player", "active");
+        this.bindSetting("colored-player-icon-menu", "sr-general-colored-player-menu", "active");
+        this.bindSetting("cover-art-radius", "sr-general-cover-art-radius", "value");
         this.bindSetting("extension-position", "cr-positions-extension-position", "selected");
         this.bindSetting("extension-index", "sr-positions-extension-index", "value");
         this.bindSetting("mediacontrols-show-popup-menu", "sl-shortcuts-popup", "accelerator");
