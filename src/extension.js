@@ -297,6 +297,10 @@ export default class MediaControls extends Extension {
      * @returns {void}
      */
     disable() {
+        for (const playerProxy of this.playerProxies.values()) {
+            playerProxy.onDestroy();
+        }
+        this.playerProxies.clear();
         this.playerProxies = null;
         this.destroySettings();
         this.watchIfaceInfo = null;

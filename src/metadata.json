@@ -1,10 +1,10 @@
 {
-  "uuid": "mediacontrols@cliffniff.github.com",
+  "uuid": "mediacontrols@m-obeid.github.com",
   "name": "Media Controls",
   "description": "Show controls and information of the currently playing media in the panel.",
-  "url": "https://github.com/cliffniff/media-controls",
+  "url": "https://github.com/m-obeid/media-controls",
   "settings-schema": "org.gnome.shell.extensions.mediacontrols",
-  "gettext-domain": "mediacontrols@cliffniff.github.com",
-  "version-name": "2.4.5",
+  "gettext-domain": "mediacontrols@m-obeid.github.com",
+  "version-name": "2.4.6",
   "shell-version": ["46", "47", "48", "49", "50"]
 }

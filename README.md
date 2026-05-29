@@ -2,6 +2,8 @@
 
 Show controls and information of the currently playing media in the panel.
 
+> This is a fork of [sakithb/media-controls](https://github.com/sakithb/media-controls), maintained at [m-obeid/media-controls](https://github.com/m-obeid/media-controls). All credit for the original work goes to the upstream authors and contributors.
+
 ## Features
 
 - Customize the extension the way you want it
@@ -77,12 +79,12 @@ For active development, use `pnpm reload` (X11) or `pnpm debug` (Wayland) to tes
 
 Any type of contribution is appreciated! If you have any suggestions for new features feel free to open a new issue.
 
-If you are interested in translating, download the [po file](https://github.com/sakithb/media-controls/blob/main/assets/locale/mediacontrols%40cliffniff.github.com.pot) and translate it. Then open a pull request with the translated file. You can use [Gtranslator](https://flathub.org/apps/org.gnome.Gtranslator) or [Poedit](https://flathub.org/apps/net.poedit.Poedit) to translate.
+If you are interested in translating, download the [po file](https://github.com/m-obeid/media-controls/blob/main/assets/locale/mediacontrols@m-obeid.github.com.pot) and translate it. Then open a pull request with the translated file. You can use [Gtranslator](https://flathub.org/apps/org.gnome.Gtranslator) or [Poedit](https://flathub.org/apps/net.poedit.Poedit) to translate.
 
 If you are interested in contributing code. There are no specific guidelines for contributing. Just make sure you follow the coding style of the project. To update the translation files run `pnpm run translations` in the extensions directory after your changes are done. This will update the files in the locale folder.
 
-<a href="https://github.com/sakithb/media-controls/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=sakithb/media-controls" />
+<a href="https://github.com/m-obeid/media-controls/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=m-obeid/media-controls" />
 </a>
 
 Made with [contrib.rocks](https://contrib.rocks).
