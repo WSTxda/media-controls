@@ -183,6 +183,11 @@ class PanelButton extends PanelMenu.Button {
      * @type {St.BoxLayout}
      */
     menuPlayerIcons;
+    /**
+     * @private
+     * @type {boolean}
+     */
+    menuPlayersExpanded;
 
     /**
      * @private
@@ -225,6 +230,7 @@ class PanelButton extends PanelMenu.Button {
         });
         this.changeListenerIds = new Map();
         this.doubleTapSourceId = null;
+        this.menuPlayersExpanded = false;
         this.updateWidgets(WidgetFlags.ALL);
         this.syncColorSchemeStyle();
         this.addProxyListeners();
@@ -384,15 +390,50 @@ class PanelButton extends PanelMenu.Button {
             this.menuPlayersTextBox = new St.BoxLayout({
                 styleClass: "popup-menu-player-pill",
                 xAlign: Clutter.ActorAlign.CENTER,
+                reactive: true,
+                trackHover: true,
             });
+            if (typeof Clutter.ClickGesture !== "undefined") {
+                const clickAction = new Clutter.ClickGesture();
+                clickAction.set_n_clicks_required(1);
+                if (clickAction.set_recognize_on_press) {
+                    clickAction.set_recognize_on_press(true);
+                }
+                clickAction.connect("recognize", () => {
+                    if (this.extension.getPlayers().length > 1) {
+                        this.menuPlayersExpanded = !this.menuPlayersExpanded;
+                        this.updateWidgets(WidgetFlags.MENU_PLAYERS);
+                    }
+                    return Clutter.EVENT_STOP;
+                });
+                this.menuPlayersTextBox.add_action(clickAction);
+            } else {
+                const clickAction = new Clutter.ClickAction();
+                clickAction.connect("clicked", () => {
+                    if (this.extension.getPlayers().length > 1) {
+                        this.menuPlayersExpanded = !this.menuPlayersExpanded;
+                        this.updateWidgets(WidgetFlags.MENU_PLAYERS);
+                    }
+                });
+                this.menuPlayersTextBox.add_action(clickAction);
+            }
         }
         const menuColoredClass = this.extension.coloredPlayerIconMenu ? "colored-icon" : "symbolic-icon";
-        if (this.menuPlayersTextBoxIcon != null) {
+        if (
+            this.menuPlayersTextBoxIcon != null &&
+            !this.menuPlayersTextBoxIcon.has_style_class_name(menuColoredClass)
+        ) {
             if (this.menuPlayersTextBoxIcon.get_parent() != null) {
                 this.menuPlayersTextBoxIcon.get_parent().remove_child(this.menuPlayersTextBoxIcon);
             }
             this.menuPlayersTextBoxIcon.destroy();
             this.menuPlayersTextBoxIcon = null;
+        }
+        if (this.menuPlayersTextBoxIcon == null) {
+            this.menuPlayersTextBoxIcon = new St.Icon({
+                styleClass: `popup-menu-icon popup-menu-player-pill-icon ${menuColoredClass}`,
+                yAlign: Clutter.ActorAlign.CENTER,
+            });
         }
         if (this.menuPlayersTextBoxLabel == null) {
             this.menuPlayersTextBoxLabel = new St.Label({
@@ -439,11 +480,15 @@ class PanelButton extends PanelMenu.Button {
             }
         }
         const players = this.extension.getPlayers();
-        if (players.length > 1 && this.menuPlayerIcons == null) {
+        if (players.length <= 1) {
+            this.menuPlayersExpanded = false;
+        }
+        if (players.length > 1 && this.menuPlayersExpanded && this.menuPlayerIcons == null) {
             this.menuPlayerIcons = new St.BoxLayout({
-                styleClass: "popup-menu-player-icons",
+                vertical: true,
+                styleClass: "popup-menu-player-list",
             });
-        } else if (players.length === 1 && this.menuPlayerIcons != null) {
+        } else if ((players.length <= 1 || !this.menuPlayersExpanded) && this.menuPlayerIcons != null) {
             this.menuPlayerIcons.get_children().forEach((child) => child.destroy());
             if (this.menuPlayerIcons.get_parent() === this.menuPlayers) {
                 this.menuPlayers.remove_child(this.menuPlayerIcons);
@@ -455,10 +500,9 @@ class PanelButton extends PanelMenu.Button {
         }
         const isPinned = this.playerProxy.isPlayerPinned();
         this.menuPlayersTextBoxPin.opacity = isPinned ? 255 : 160;
+        this.menuPlayersTextBoxPin.visible = players.length > 1;
+        this.menuPlayersTextBoxPin.reactive = players.length > 1;
         this.menuPlayersTextBoxPin.set_style_pseudo_class(isPinned ? "checked" : null);
-        if (this.menuPlayerIcons != null) {
-            this.menuPlayerIcons.opacity = isPinned ? 160 : 255;
-        }
         for (let i = 0; i < players.length; i++) {
             const player = players[i];
             const app = getAppByIdAndEntry(player.identity, player.desktopEntry);
@@ -467,35 +511,53 @@ class PanelButton extends PanelMenu.Button {
             const appIcon = app?.get_icon() ?? Gio.Icon.new_for_string("audio-x-generic-symbolic");
             if (isSamePlayer) {
                 this.menuPlayersTextBoxLabel.text = appName;
+                this.menuPlayersTextBoxIcon.gicon = appIcon;
             }
-            if (players.length > 1) {
+            if (this.menuPlayerIcons != null) {
                 const button = new St.Button({
                     name: `player-${i}`,
-                    styleClass: "button popup-menu-player-icons-button",
+                    styleClass: "button popup-menu-player-list-row",
                     reactive: isPinned === false,
                     trackHover: isPinned === false,
                     canFocus: isPinned === false,
-                    xAlign: Clutter.ActorAlign.FILL,
-                    xExpand: true,
                     toggleMode: true,
                     checked: isSamePlayer,
                 });
+                const row = new St.BoxLayout({
+                    styleClass: "popup-menu-player-list-row-box",
+                });
                 const icon = new St.Icon({
-                    styleClass: `popup-menu-icon popup-menu-player-icons-icon ${menuColoredClass}`,
+                    styleClass: `popup-menu-icon popup-menu-player-list-icon ${menuColoredClass}`,
                     gicon: appIcon,
-                    xAlign: Clutter.ActorAlign.CENTER,
+                    yAlign: Clutter.ActorAlign.CENTER,
+                });
+                const label = new St.Label({
+                    text: appName,
+                    yAlign: Clutter.ActorAlign.CENTER,
                     xExpand: true,
                 });
-                button.set_child(icon);
+                row.add_child(icon);
+                row.add_child(label);
+                if (isSamePlayer) {
+                    row.add_child(
+                        new St.Icon({
+                            iconName: "object-select-symbolic",
+                            styleClass: "popup-menu-icon popup-menu-player-list-check",
+                            yAlign: Clutter.ActorAlign.CENTER,
+                        }),
+                    );
+                }
+                button.set_child(row);
                 if (!isSamePlayer) {
                     button.connect("clicked", () => {
+                        this.menuPlayersExpanded = false;
                         this.updateProxy(player);
                     });
                 }
                 this.menuPlayerIcons.add_child(button);
             }
         }
-        for (const child of [this.menuPlayersTextBoxLabel, this.menuPlayersTextBoxPin]) {
+        for (const child of [this.menuPlayersTextBoxIcon, this.menuPlayersTextBoxLabel, this.menuPlayersTextBoxPin]) {
             const parent = child.get_parent();
             if (parent !== this.menuPlayersTextBox) {
                 parent?.remove_child(child);
@@ -1495,6 +1557,7 @@ class PanelButton extends PanelMenu.Button {
             this.menuPlayerIcons.get_children().forEach((child) => child.destroy());
         }
         this.menuPlayerIcons = null;
+        this.menuPlayersExpanded = false;
         this.menuLabelTitle = null;
         this.menuLabelSubtitle = null;
         this.menuLabelAlbum = null;
