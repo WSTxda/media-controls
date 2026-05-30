@@ -45,11 +45,11 @@
 
 .popup-menu-box {
     border-width: 0px;
-    padding: 18px 24px 22px;
+    padding: 18px 28px 24px;
     spacing: 18px;
-    width: 244px;
-    min-width: 244px;
-    max-width: 244px;
+    width: 300px;
+    min-width: 300px;
+    max-width: 300px;
 }
 
 .popup-menu-box > * {
@@ -62,10 +62,10 @@
 }
 
 .popup-menu-player-pill {
-    border-radius: 18px;
-    padding: 5px 10px;
-    spacing: 8px;
-    min-height: 24px;
+    border-radius: 10px;
+    padding: 4px 10px;
+    spacing: 7px;
+    min-height: 26px;
     max-height: 28px;
 }
 
@@ -75,7 +75,7 @@
 
 .popup-menu-player-pin {
     border-radius: 99px;
-    icon-size: 14px;
+    icon-size: 13px;
     padding: 1px;
 }
 
@@ -99,7 +99,7 @@
 
 .popup-menu-player-label {
     font-weight: bold;
-    font-size: 0.95em;
+    font-size: 1em;
 }
 
 .popup-menu-cover-art {
@@ -113,11 +113,11 @@
 
 .popup-menu-label-title {
     font-weight: bold;
-    font-size: 1em;
+    font-size: 1.08em;
 }
 
 .popup-menu-label-subtitle {
-    font-size: 0.95em;
+    font-size: 1em;
 }
 
 .popup-menu-slider {
@@ -147,35 +147,35 @@
 
 .popup-menu-control-button {
     border-radius: 99px;
-    min-height: 40px;
-    min-width: 40px;
+    min-height: 42px;
+    min-width: 42px;
     padding: 0;
 }
 
 .popup-menu-control-button-circular {
-    width: 40px;
-    height: 40px;
+    width: 42px;
+    height: 42px;
 }
 
 .popup-menu-control-button-primary {
-    min-width: 88px;
-    width: 88px;
-    height: 46px;
+    min-width: 96px;
+    width: 96px;
+    height: 48px;
 }
 
 .media-controls-dark .popup-menu-control-button-primary,
 .media-controls-dark .popup-menu-control-button-primary:checked,
 .media-controls-dark .popup-menu-control-button-primary:hover,
 .media-controls-dark .popup-menu-control-button-primary:active {
-    background-color: #e6e6e7;
-    color: #2d2d32;
+    background-color: #ffffff;
+    color: #000000;
 }
 
 .media-controls-light .popup-menu-control-button-primary,
 .media-controls-light .popup-menu-control-button-primary:checked,
 .media-controls-light .popup-menu-control-button-primary:hover,
 .media-controls-light .popup-menu-control-button-primary:active {
-    background-color: #38383c;
+    background-color: #000000;
     color: #ffffff;
 }
 
@@ -187,9 +187,9 @@
 }
 
 .popup-menu-control-icon {
-    icon-size: 18px;
+    icon-size: 19px;
 }
 
 .popup-menu-control-button-primary .popup-menu-control-icon {
-    icon-size: 20px;
+    icon-size: 21px;
 }

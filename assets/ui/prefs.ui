@@ -113,21 +113,27 @@
           </object>
         </child>
         <child>
-          <object class="AdwSwitchRow" id="sr-general-show-popup-title">
-            <property name="title" translatable="yes">Show track title</property>
-            <property name="subtitle" translatable="yes">Show the track title in the popup.</property>
-          </object>
-        </child>
-        <child>
-          <object class="AdwSwitchRow" id="sr-general-show-popup-artist">
-            <property name="title" translatable="yes">Show artist</property>
-            <property name="subtitle" translatable="yes">Show the artist in the popup.</property>
-          </object>
-        </child>
-        <child>
-          <object class="AdwSwitchRow" id="sr-general-show-popup-album">
-            <property name="title" translatable="yes">Show album</property>
-            <property name="subtitle" translatable="yes">Show the album in the popup.</property>
+          <object class="AdwExpanderRow">
+            <property name="title" translatable="yes">Popup text</property>
+            <property name="subtitle" translatable="yes">Choose which track information appears in the popup</property>
+            <child>
+              <object class="AdwSwitchRow" id="sr-general-show-popup-title">
+                <property name="title" translatable="yes">Show track title</property>
+                <property name="subtitle" translatable="yes">Show the track title in the popup.</property>
+              </object>
+            </child>
+            <child>
+              <object class="AdwSwitchRow" id="sr-general-show-popup-artist">
+                <property name="title" translatable="yes">Show artist</property>
+                <property name="subtitle" translatable="yes">Show the artist in the popup.</property>
+              </object>
+            </child>
+            <child>
+              <object class="AdwSwitchRow" id="sr-general-show-popup-album">
+                <property name="title" translatable="yes">Show album</property>
+                <property name="subtitle" translatable="yes">Show the album in the popup.</property>
+              </object>
+            </child>
           </object>
         </child>
       </object>

@@ -33,7 +33,8 @@ import {
 Gio._promisify(GdkPixbuf.Pixbuf, "new_from_stream_async", "new_from_stream_finish");
 Gio._promisify(Gio.File.prototype, "query_info_async", "query_info_finish");
 
-const POPUP_COVER_WIDTH = 220;
+const POPUP_CONTENT_WIDTH = 300;
+const POPUP_COVER_WIDTH = 250;
 
 /**
  * @param {Clutter.Actor} parent
@@ -47,6 +48,29 @@ function find_child_by_name(parent, name) {
             return child;
         }
     }
+}
+
+/**
+ * @param {MenuControlIconOptions} options
+ * @returns {number}
+ */
+function getMenuControlIndex(options) {
+    if (options.name === ControlIconOptions.PREVIOUS.name) {
+        return 0;
+    }
+    if (options.name === ControlIconOptions.PLAY.name) {
+        return 1;
+    }
+    if (options.name === ControlIconOptions.NEXT.name) {
+        return 2;
+    }
+    if (options.name === ControlIconOptions.LOOP_NONE.name) {
+        return 0;
+    }
+    if (options.name === ControlIconOptions.SHUFFLE_ON.name) {
+        return 1;
+    }
+    return 0;
 }
 
 /** @extends PanelMenu.Button */
@@ -363,23 +387,12 @@ class PanelButton extends PanelMenu.Button {
             });
         }
         const menuColoredClass = this.extension.coloredPlayerIconMenu ? "colored-icon" : "symbolic-icon";
-        if (
-            this.menuPlayersTextBoxIcon != null &&
-            !this.menuPlayersTextBoxIcon.has_style_class_name(menuColoredClass)
-        ) {
-            // -st-icon-style is only read when St (re)builds the icon pipeline,
-            // so toggling the class on an existing icon does nothing. Recreate.
+        if (this.menuPlayersTextBoxIcon != null) {
             if (this.menuPlayersTextBoxIcon.get_parent() != null) {
-                this.menuPlayersTextBox.remove_child(this.menuPlayersTextBoxIcon);
+                this.menuPlayersTextBoxIcon.get_parent().remove_child(this.menuPlayersTextBoxIcon);
             }
             this.menuPlayersTextBoxIcon.destroy();
             this.menuPlayersTextBoxIcon = null;
-        }
-        if (this.menuPlayersTextBoxIcon == null) {
-            this.menuPlayersTextBoxIcon = new St.Icon({
-                styleClass: `popup-menu-icon popup-menu-player-pill-icon ${menuColoredClass}`,
-                yAlign: Clutter.ActorAlign.CENTER,
-            });
         }
         if (this.menuPlayersTextBoxLabel == null) {
             this.menuPlayersTextBoxLabel = new St.Label({
@@ -454,7 +467,6 @@ class PanelButton extends PanelMenu.Button {
             const appIcon = app?.get_icon() ?? Gio.Icon.new_for_string("audio-x-generic-symbolic");
             if (isSamePlayer) {
                 this.menuPlayersTextBoxLabel.text = appName;
-                this.menuPlayersTextBoxIcon.gicon = appIcon;
             }
             if (players.length > 1) {
                 const button = new St.Button({
@@ -483,7 +495,7 @@ class PanelButton extends PanelMenu.Button {
                 this.menuPlayerIcons.add_child(button);
             }
         }
-        for (const child of [this.menuPlayersTextBoxIcon, this.menuPlayersTextBoxLabel, this.menuPlayersTextBoxPin]) {
+        for (const child of [this.menuPlayersTextBoxLabel, this.menuPlayersTextBoxPin]) {
             const parent = child.get_parent();
             if (parent !== this.menuPlayersTextBox) {
                 parent?.remove_child(child);
@@ -540,7 +552,7 @@ class PanelButton extends PanelMenu.Button {
                 }
             }
         }
-        const width = this.getMenuItemWidth();
+        const width = this.getCoverArtWidth();
         if (stream != null) {
             /** @type {Promise<GdkPixbuf.Pixbuf>} */
             const pixbufPromise = /** @type {any} */ (GdkPixbuf.Pixbuf.new_from_stream_async(stream, null));
@@ -923,7 +935,7 @@ class PanelButton extends PanelMenu.Button {
                 oldIcon.destroy();
             }
         }
-        const targetIndex = Math.min(options.menuProps.index, targetBox.get_children().length);
+        const targetIndex = Math.min(getMenuControlIndex(options), targetBox.get_children().length);
         targetBox.insert_child_at_index(button, targetIndex);
     }
 
@@ -1153,6 +1165,14 @@ class PanelButton extends PanelMenu.Button {
      * @returns {number}
      */
     getMenuItemWidth() {
+        return POPUP_CONTENT_WIDTH;
+    }
+
+    /**
+     * @private
+     * @returns {number}
+     */
+    getCoverArtWidth() {
         return POPUP_COVER_WIDTH;
     }
 
