@@ -33,6 +33,9 @@ import {
 Gio._promisify(GdkPixbuf.Pixbuf, "new_from_stream_async", "new_from_stream_finish");
 Gio._promisify(Gio.File.prototype, "query_info_async", "query_info_finish");
 
+const POPUP_CONTENT_WIDTH = 300;
+const POPUP_COVER_WIDTH = 250;
+
 /**
  * @param {Clutter.Actor} parent
  * @param {string} name
@@ -47,6 +50,29 @@ function find_child_by_name(parent, name) {
     }
 }
 
+/**
+ * @param {MenuControlIconOptions} options
+ * @returns {number}
+ */
+function getMenuControlIndex(options) {
+    if (options.name === ControlIconOptions.PREVIOUS.name) {
+        return 0;
+    }
+    if (options.name === ControlIconOptions.PLAY.name) {
+        return 1;
+    }
+    if (options.name === ControlIconOptions.NEXT.name) {
+        return 2;
+    }
+    if (options.name === ControlIconOptions.LOOP_NONE.name) {
+        return 0;
+    }
+    if (options.name === ControlIconOptions.SHUFFLE_ON.name) {
+        return 1;
+    }
+    return 0;
+}
+
 /** @extends PanelMenu.Button */
 class PanelButton extends PanelMenu.Button {
     /**
@@ -59,6 +85,16 @@ class PanelButton extends PanelMenu.Button {
      * @type {MediaControls}
      */
     extension;
+    /**
+     * @private
+     * @type {Gio.Settings}
+     */
+    interfaceSettings;
+    /**
+     * @private
+     * @type {number}
+     */
+    interfaceSettingsChangedId;
 
     /**
      * @private
@@ -111,6 +147,16 @@ class PanelButton extends PanelMenu.Button {
      * @type {St.BoxLayout}
      */
     menuControls;
+    /**
+     * @private
+     * @type {St.BoxLayout}
+     */
+    menuMainControls;
+    /**
+     * @private
+     * @type {St.BoxLayout}
+     */
+    menuSecondaryControls;
 
     /**
      * @private
@@ -137,6 +183,11 @@ class PanelButton extends PanelMenu.Button {
      * @type {St.BoxLayout}
      */
     menuPlayerIcons;
+    /**
+     * @private
+     * @type {boolean}
+     */
+    menuPlayersExpanded;
 
     /**
      * @private
@@ -148,6 +199,11 @@ class PanelButton extends PanelMenu.Button {
      * @type {InstanceType<typeof ScrollingLabel>}
      */
     menuLabelSubtitle;
+    /**
+     * @private
+     * @type {InstanceType<typeof ScrollingLabel>}
+     */
+    menuLabelAlbum;
 
     /**
      * @private
@@ -168,9 +224,15 @@ class PanelButton extends PanelMenu.Button {
         super(0.5, "Media Controls", false);
         this.playerProxy = playerProxy;
         this.extension = extension;
+        this.interfaceSettings = new Gio.Settings({ schema_id: "org.gnome.desktop.interface" });
+        this.interfaceSettingsChangedId = this.interfaceSettings.connect("changed::color-scheme", () => {
+            this.syncColorSchemeStyle();
+        });
         this.changeListenerIds = new Map();
         this.doubleTapSourceId = null;
+        this.menuPlayersExpanded = false;
         this.updateWidgets(WidgetFlags.ALL);
+        this.syncColorSchemeStyle();
         this.addProxyListeners();
         this.initActions();
         // @ts-expect-error
@@ -321,51 +383,73 @@ class PanelButton extends PanelMenu.Button {
         if (this.menuPlayers == null) {
             this.menuPlayers = new St.BoxLayout({
                 vertical: true,
+                styleClass: "popup-menu-players",
             });
         }
         if (this.menuPlayersTextBox == null) {
             this.menuPlayersTextBox = new St.BoxLayout({
-                marginBottom: 3,
+                styleClass: "popup-menu-player-pill",
+                xAlign: Clutter.ActorAlign.CENTER,
+                reactive: true,
+                trackHover: true,
             });
+            if (typeof Clutter.ClickGesture !== "undefined") {
+                const clickAction = new Clutter.ClickGesture();
+                clickAction.set_n_clicks_required(1);
+                if (clickAction.set_recognize_on_press) {
+                    clickAction.set_recognize_on_press(true);
+                }
+                clickAction.connect("recognize", () => {
+                    if (this.extension.getPlayers().length > 1) {
+                        this.menuPlayersExpanded = !this.menuPlayersExpanded;
+                        this.updateWidgets(WidgetFlags.MENU_PLAYERS);
+                    }
+                    return Clutter.EVENT_STOP;
+                });
+                this.menuPlayersTextBox.add_action(clickAction);
+            } else {
+                const clickAction = new Clutter.ClickAction();
+                clickAction.connect("clicked", () => {
+                    if (this.extension.getPlayers().length > 1) {
+                        this.menuPlayersExpanded = !this.menuPlayersExpanded;
+                        this.updateWidgets(WidgetFlags.MENU_PLAYERS);
+                    }
+                });
+                this.menuPlayersTextBox.add_action(clickAction);
+            }
         }
         const menuColoredClass = this.extension.coloredPlayerIconMenu ? "colored-icon" : "symbolic-icon";
         if (
             this.menuPlayersTextBoxIcon != null &&
             !this.menuPlayersTextBoxIcon.has_style_class_name(menuColoredClass)
         ) {
-            // -st-icon-style is only read when St (re)builds the icon pipeline,
-            // so toggling the class on an existing icon does nothing. Recreate.
             if (this.menuPlayersTextBoxIcon.get_parent() != null) {
-                this.menuPlayersTextBox.remove_child(this.menuPlayersTextBoxIcon);
+                this.menuPlayersTextBoxIcon.get_parent().remove_child(this.menuPlayersTextBoxIcon);
             }
             this.menuPlayersTextBoxIcon.destroy();
             this.menuPlayersTextBoxIcon = null;
         }
         if (this.menuPlayersTextBoxIcon == null) {
             this.menuPlayersTextBoxIcon = new St.Icon({
-                styleClass: `popup-menu-icon ${menuColoredClass}`,
-                yAlign: Clutter.ActorAlign.END,
-                xAlign: Clutter.ActorAlign.END,
-                xExpand: true,
-                yExpand: true,
+                styleClass: `popup-menu-icon popup-menu-player-pill-icon ${menuColoredClass}`,
+                yAlign: Clutter.ActorAlign.CENTER,
             });
         }
         if (this.menuPlayersTextBoxLabel == null) {
             this.menuPlayersTextBoxLabel = new St.Label({
                 styleClass: "popup-menu-player-label",
-                yAlign: Clutter.ActorAlign.END,
-                yExpand: true,
+                yAlign: Clutter.ActorAlign.CENTER,
+                xAlign: Clutter.ActorAlign.CENTER,
+                xExpand: true,
             });
         }
         if (this.menuPlayersTextBoxPin == null) {
             this.menuPlayersTextBoxPin = new St.Icon({
                 iconName: "view-pin-symbolic",
-                styleClass: "popup-menu-icon",
-                yAlign: Clutter.ActorAlign.END,
-                xAlign: Clutter.ActorAlign.START,
-                yExpand: true,
-                xExpand: true,
+                styleClass: "popup-menu-icon popup-menu-player-pin",
+                yAlign: Clutter.ActorAlign.CENTER,
                 reactive: true,
+                trackHover: true,
             });
 
             if (typeof Clutter.ClickGesture !== "undefined") {
@@ -396,13 +480,19 @@ class PanelButton extends PanelMenu.Button {
             }
         }
         const players = this.extension.getPlayers();
-        if (players.length > 1 && this.menuPlayerIcons == null) {
+        if (players.length <= 1) {
+            this.menuPlayersExpanded = false;
+        }
+        if (players.length > 1 && this.menuPlayersExpanded && this.menuPlayerIcons == null) {
             this.menuPlayerIcons = new St.BoxLayout({
-                styleClass: "popup-menu-player-icons",
+                vertical: true,
+                styleClass: "popup-menu-player-list",
             });
-        } else if (players.length === 1 && this.menuPlayerIcons != null) {
+        } else if ((players.length <= 1 || !this.menuPlayersExpanded) && this.menuPlayerIcons != null) {
             this.menuPlayerIcons.get_children().forEach((child) => child.destroy());
-            this.menuPlayers.remove_child(this.menuPlayerIcons);
+            if (this.menuPlayerIcons.get_parent() === this.menuPlayers) {
+                this.menuPlayers.remove_child(this.menuPlayerIcons);
+            }
             this.menuPlayerIcons.destroy();
             this.menuPlayerIcons = null;
         } else if (this.menuPlayerIcons != null) {
@@ -410,9 +500,9 @@ class PanelButton extends PanelMenu.Button {
         }
         const isPinned = this.playerProxy.isPlayerPinned();
         this.menuPlayersTextBoxPin.opacity = isPinned ? 255 : 160;
-        if (this.menuPlayerIcons != null) {
-            this.menuPlayerIcons.opacity = isPinned ? 160 : 255;
-        }
+        this.menuPlayersTextBoxPin.visible = players.length > 1;
+        this.menuPlayersTextBoxPin.reactive = players.length > 1;
+        this.menuPlayersTextBoxPin.set_style_pseudo_class(isPinned ? "checked" : null);
         for (let i = 0; i < players.length; i++) {
             const player = players[i];
             const app = getAppByIdAndEntry(player.identity, player.desktopEntry);
@@ -421,64 +511,58 @@ class PanelButton extends PanelMenu.Button {
             const appIcon = app?.get_icon() ?? Gio.Icon.new_for_string("audio-x-generic-symbolic");
             if (isSamePlayer) {
                 this.menuPlayersTextBoxLabel.text = appName;
-                if (this.menuPlayersTextBoxIcon?.get_parent() != null) {
-                    this.menuPlayersTextBox.remove_child(this.menuPlayersTextBoxIcon);
-                }
-                if (this.menuPlayersTextBoxPin.get_parent() != null) {
-                    this.menuPlayersTextBox.remove_child(this.menuPlayersTextBoxPin);
-                }
-                if (players.length > 1) {
-                    this.menuPlayersTextBoxIcon.gicon = null;
-                    this.menuPlayersTextBoxLabel.xAlign = Clutter.ActorAlign.END;
-                    this.menuPlayersTextBoxLabel.xExpand = true;
-                    this.menuPlayersTextBox.insert_child_at_index(this.menuPlayersTextBoxPin, 1);
-                } else {
-                    this.menuPlayersTextBoxIcon.gicon = appIcon;
-                    this.menuPlayersTextBox.insert_child_at_index(this.menuPlayersTextBoxIcon, 0);
-                    this.menuPlayersTextBoxLabel.xAlign = Clutter.ActorAlign.START;
-                    this.menuPlayersTextBoxLabel.xExpand = true;
-                }
+                this.menuPlayersTextBoxIcon.gicon = appIcon;
             }
-            if (players.length > 1) {
-                const icon = new St.Icon({
-                    styleClass: `popup-menu-icon popup-menu-player-icons-icon ${menuColoredClass}`,
-                    gicon: appIcon,
+            if (this.menuPlayerIcons != null) {
+                const button = new St.Button({
+                    name: `player-${i}`,
+                    styleClass: "button popup-menu-player-list-row",
                     reactive: isPinned === false,
                     trackHover: isPinned === false,
-                    xAlign: Clutter.ActorAlign.FILL,
+                    canFocus: isPinned === false,
+                    toggleMode: true,
+                    checked: isSamePlayer,
+                });
+                const row = new St.BoxLayout({
+                    styleClass: "popup-menu-player-list-row-box",
+                });
+                const icon = new St.Icon({
+                    styleClass: `popup-menu-icon popup-menu-player-list-icon ${menuColoredClass}`,
+                    gicon: appIcon,
+                    yAlign: Clutter.ActorAlign.CENTER,
+                });
+                const label = new St.Label({
+                    text: appName,
+                    yAlign: Clutter.ActorAlign.CENTER,
                     xExpand: true,
                 });
-                if (i === 0) {
-                    icon.add_style_class_name("popup-menu-player-icons-icon-first");
-                } else if (i === players.length - 1) {
-                    icon.add_style_class_name("popup-menu-player-icons-icon-last");
-                }
+                row.add_child(icon);
+                row.add_child(label);
                 if (isSamePlayer) {
-                    icon.add_style_class_name("popup-menu-player-icons-icon-active");
-                } else {
-                    if (typeof Clutter.ClickGesture !== "undefined") {
-                        const clickAction = new Clutter.ClickGesture();
-                        if (clickAction.set_recognize_on_press) {
-                            clickAction.set_recognize_on_press(true);
-                        }
-                        clickAction.connect("recognize", () => {
-                            this.updateProxy(player);
-                            return Clutter.EVENT_STOP;
-                        });
-                        icon.add_action(clickAction);
-                    } else {
-                        const clickAction = new Clutter.ClickAction();
-                        clickAction.connect("clicked", () => {
-                            this.updateProxy(player);
-                        });
-                        icon.add_action(clickAction);
-                    }
+                    row.add_child(
+                        new St.Icon({
+                            iconName: "object-select-symbolic",
+                            styleClass: "popup-menu-icon popup-menu-player-list-check",
+                            yAlign: Clutter.ActorAlign.CENTER,
+                        }),
+                    );
                 }
-                this.menuPlayerIcons.add_child(icon);
+                button.set_child(row);
+                if (!isSamePlayer) {
+                    button.connect("clicked", () => {
+                        this.menuPlayersExpanded = false;
+                        this.updateProxy(player);
+                    });
+                }
+                this.menuPlayerIcons.add_child(button);
             }
         }
-        if (this.menuPlayersTextBoxLabel.get_parent() == null) {
-            this.menuPlayersTextBox.add_child(this.menuPlayersTextBoxLabel);
+        for (const child of [this.menuPlayersTextBoxIcon, this.menuPlayersTextBoxLabel, this.menuPlayersTextBoxPin]) {
+            const parent = child.get_parent();
+            if (parent !== this.menuPlayersTextBox) {
+                parent?.remove_child(child);
+                this.menuPlayersTextBox.add_child(child);
+            }
         }
         if (this.menuPlayersTextBox.get_parent() == null) {
             this.menuPlayers.add_child(this.menuPlayersTextBox);
@@ -499,6 +583,7 @@ class PanelButton extends PanelMenu.Button {
     async addMenuImage() {
         if (this.menuImage == null) {
             this.menuImage = new St.Icon({
+                styleClass: "popup-menu-cover-art",
                 xExpand: false,
                 yExpand: false,
                 xAlign: Clutter.ActorAlign.CENTER,
@@ -529,7 +614,7 @@ class PanelButton extends PanelMenu.Button {
                 }
             }
         }
-        const width = this.getMenuItemWidth();
+        const width = this.getCoverArtWidth();
         if (stream != null) {
             /** @type {Promise<GdkPixbuf.Pixbuf>} */
             const pixbufPromise = /** @type {any} */ (GdkPixbuf.Pixbuf.new_from_stream_async(stream, null));
@@ -658,41 +743,75 @@ class PanelButton extends PanelMenu.Button {
         if (this.menuLabels == null) {
             this.menuLabels = new St.BoxLayout({
                 vertical: true,
+                styleClass: "popup-menu-labels",
             });
         }
-        if (this.menuLabelTitle != null) {
-            this.menuLabels.remove_child(this.menuLabelTitle);
-            this.menuLabelTitle.destroy();
+        for (const label of [this.menuLabelTitle, this.menuLabelSubtitle, this.menuLabelAlbum]) {
+            if (label?.get_parent() === this.menuLabels) {
+                this.menuLabels.remove_child(label);
+            }
+            label?.destroy();
         }
-        if (this.menuLabelSubtitle != null) {
-            this.menuLabels.remove_child(this.menuLabelSubtitle);
-            this.menuLabelSubtitle.destroy();
-        }
+        this.menuLabelTitle = null;
+        this.menuLabelSubtitle = null;
+        this.menuLabelAlbum = null;
+
         const width = this.getMenuItemWidth();
-        this.menuLabelTitle = new ScrollingLabel({
-            text: this.playerProxy.metadata["xesam:title"],
-            isScrolling: this.extension.scrollLabels,
-            initPaused: this.playerProxy.playbackStatus !== PlaybackStatus.PLAYING,
-            width,
-            scrollSpeed: this.extension.scrollSpeed,
-        });
-        const artistText = this.playerProxy.metadata["xesam:artist"]?.join(", ") || _("Unknown artist");
-        const albumText = this.playerProxy.metadata["xesam:album"] || "";
-        this.menuLabelSubtitle = new ScrollingLabel({
-            text: albumText === "" ? artistText : `${artistText} / ${albumText}`,
-            isScrolling: this.extension.scrollLabels,
-            initPaused: this.playerProxy.playbackStatus !== PlaybackStatus.PLAYING,
-            direction: Clutter.TimelineDirection.BACKWARD,
-            width,
-            scrollSpeed: this.extension.scrollSpeed,
-        });
-        this.menuLabelTitle.label.add_style_class_name("popup-menu-label-title");
-        this.menuLabelTitle.box.xAlign = Clutter.ActorAlign.CENTER;
-        this.menuLabelSubtitle.box.xAlign = Clutter.ActorAlign.CENTER;
-        this.menuLabels.add_child(this.menuLabelTitle);
-        this.menuLabels.add_child(this.menuLabelSubtitle);
+        const labels = [];
+        if (this.extension.showPopupTitle) {
+            this.menuLabelTitle = new ScrollingLabel({
+                text: this.playerProxy.metadata["xesam:title"],
+                isScrolling: this.extension.scrollLabels,
+                initPaused: this.playerProxy.playbackStatus !== PlaybackStatus.PLAYING,
+                width,
+                scrollSpeed: this.extension.scrollSpeed,
+            });
+            this.menuLabelTitle.label.add_style_class_name("popup-menu-label-title");
+            labels.push(this.menuLabelTitle);
+        }
+        if (this.extension.showPopupArtist) {
+            const artistText = this.playerProxy.metadata["xesam:artist"]?.join(", ") || _("Unknown artist");
+            this.menuLabelSubtitle = new ScrollingLabel({
+                text: artistText,
+                isScrolling: this.extension.scrollLabels,
+                initPaused: this.playerProxy.playbackStatus !== PlaybackStatus.PLAYING,
+                direction: Clutter.TimelineDirection.BACKWARD,
+                width,
+                scrollSpeed: this.extension.scrollSpeed,
+            });
+            this.menuLabelSubtitle.label.add_style_class_name("popup-menu-label-subtitle");
+            labels.push(this.menuLabelSubtitle);
+        }
+        if (this.extension.showPopupAlbum) {
+            const albumText = this.playerProxy.metadata["xesam:album"] || _("Unknown album");
+            this.menuLabelAlbum = new ScrollingLabel({
+                text: albumText,
+                isScrolling: this.extension.scrollLabels,
+                initPaused: this.playerProxy.playbackStatus !== PlaybackStatus.PLAYING,
+                width,
+                scrollSpeed: this.extension.scrollSpeed,
+            });
+            this.menuLabelAlbum.label.add_style_class_name("popup-menu-label-album");
+            labels.push(this.menuLabelAlbum);
+        }
+        for (const label of labels) {
+            label.box.xAlign = Clutter.ActorAlign.CENTER;
+            this.menuLabels.add_child(label);
+        }
+        if (labels.length === 0) {
+            if (this.menuLabels.get_parent() === this.menuBox) {
+                this.menuBox.remove_child(this.menuLabels);
+            }
+            return;
+        }
         if (this.menuLabels.get_parent() == null) {
-            this.menuBox.add_child(this.menuLabels);
+            if (this.menuSlider?.get_parent() === this.menuBox) {
+                this.menuBox.insert_child_below(this.menuLabels, this.menuSlider);
+            } else if (this.menuControls?.get_parent() === this.menuBox) {
+                this.menuBox.insert_child_below(this.menuLabels, this.menuControls);
+            } else {
+                this.menuBox.add_child(this.menuLabels);
+            }
             debugLog("Added menu labels");
         }
     }
@@ -723,7 +842,13 @@ class PanelButton extends PanelMenu.Button {
             this.menuSlider.setDisabled(true);
         }
         if (this.menuSlider.get_parent() == null) {
-            this.menuBox.insert_child_above(this.menuSlider, this.menuLabels);
+            if (this.menuLabels?.get_parent() === this.menuBox) {
+                this.menuBox.insert_child_above(this.menuSlider, this.menuLabels);
+            } else if (this.menuControls?.get_parent() === this.menuBox) {
+                this.menuBox.insert_child_below(this.menuSlider, this.menuControls);
+            } else {
+                this.menuBox.add_child(this.menuSlider);
+            }
             debugLog("Added menu slider");
         }
     }
@@ -735,7 +860,29 @@ class PanelButton extends PanelMenu.Button {
      */
     addMenuControls(flags) {
         if (this.menuControls == null) {
-            this.menuControls = new St.BoxLayout();
+            this.menuControls = new St.BoxLayout({
+                vertical: true,
+                styleClass: "popup-menu-controls",
+                xAlign: Clutter.ActorAlign.CENTER,
+            });
+        }
+        if (this.menuMainControls == null) {
+            this.menuMainControls = new St.BoxLayout({
+                styleClass: "popup-menu-main-controls",
+                xAlign: Clutter.ActorAlign.CENTER,
+            });
+        }
+        if (this.menuSecondaryControls == null) {
+            this.menuSecondaryControls = new St.BoxLayout({
+                styleClass: "popup-menu-secondary-controls",
+                xAlign: Clutter.ActorAlign.CENTER,
+            });
+        }
+        if (this.menuMainControls.get_parent() == null) {
+            this.menuControls.add_child(this.menuMainControls);
+        }
+        if (this.menuSecondaryControls.get_parent() == null) {
+            this.menuControls.add_child(this.menuSecondaryControls);
         }
         if (flags & WidgetFlags.MENU_CONTROLS_LOOP) {
             this.addMenuControlIcon(
@@ -806,41 +953,52 @@ class PanelButton extends PanelMenu.Button {
      * @returns {void}
      */
     addMenuControlIcon(options, reactive, onClick) {
-        const icon = new St.Icon({
+        const isPrimary = options.name === ControlIconOptions.PLAY.name;
+        const isSecondary =
+            options.name === ControlIconOptions.LOOP_NONE.name || options.name === ControlIconOptions.SHUFFLE_ON.name;
+        const isActive =
+            options === ControlIconOptions.LOOP_TRACK ||
+            options === ControlIconOptions.LOOP_PLAYLIST ||
+            options === ControlIconOptions.SHUFFLE_OFF;
+        const targetBox = isSecondary ? this.menuSecondaryControls : this.menuMainControls;
+        const styleClasses = [
+            "button",
+            "popup-menu-control-button",
+            isPrimary ? "popup-menu-control-button-primary" : "popup-menu-control-button-circular",
+            isSecondary ? "popup-menu-control-button-state" : "",
+        ]
+            .filter(Boolean)
+            .join(" ");
+        const button = new St.Button({
             name: options.name,
-            iconName: options.iconName,
-            styleClass: "popup-menu-icon popup-menu-control-icon",
+            styleClass: styleClasses,
             trackHover: reactive,
             opacity: reactive ? 255 : 160,
             reactive,
-            ...options.menuProps.options,
+            canFocus: reactive,
+            toggleMode: isPrimary || isSecondary,
+            checked: isPrimary ? reactive : isActive,
+            xAlign: Clutter.ActorAlign.CENTER,
+            yAlign: Clutter.ActorAlign.CENTER,
+        });
+        const icon = new St.Icon({
+            iconName: options.iconName,
+            styleClass: "popup-menu-icon popup-menu-control-icon",
+        });
+        button.set_child(icon);
+        button.connect("clicked", () => {
+            onClick();
         });
 
-        if (typeof Clutter.ClickGesture !== "undefined") {
-            const clickGesture = new Clutter.ClickGesture();
-            clickGesture.set_n_clicks_required(1);
-            if (clickGesture.set_recognize_on_press) {
-                clickGesture.set_recognize_on_press(true);
+        for (const controlsBox of [this.menuMainControls, this.menuSecondaryControls]) {
+            const oldIcon = find_child_by_name(controlsBox, options.name);
+            if (oldIcon?.get_parent() === controlsBox) {
+                controlsBox.remove_child(oldIcon);
+                oldIcon.destroy();
             }
-            clickGesture.connect("recognize", () => {
-                onClick();
-                return Clutter.EVENT_STOP;
-            });
-            icon.add_action(clickGesture);
-        } else {
-            const clickAction = new Clutter.ClickAction();
-            clickAction.connect("clicked", () => {
-                onClick();
-            });
-            icon.add_action(clickAction);
         }
-
-        const oldIcon = find_child_by_name(this.menuControls, options.name);
-        if (oldIcon?.get_parent() === this.menuControls) {
-            this.menuControls.replace_child(oldIcon, icon);
-        } else {
-            this.menuControls.insert_child_at_index(icon, options.menuProps.index);
-        }
+        const targetIndex = Math.min(getMenuControlIndex(options), targetBox.get_children().length);
+        targetBox.insert_child_at_index(button, targetIndex);
     }
 
     /**
@@ -1069,10 +1227,30 @@ class PanelButton extends PanelMenu.Button {
      * @returns {number}
      */
     getMenuItemWidth() {
-        // @ts-expect-error
-        const menuContainer = this.menu.box.get_parent().get_parent();
-        const minWidth = menuContainer.get_theme_node().get_min_width() - 24;
-        return Math.max(minWidth, this.extension.labelWidth);
+        return POPUP_CONTENT_WIDTH;
+    }
+
+    /**
+     * @private
+     * @returns {number}
+     */
+    getCoverArtWidth() {
+        return POPUP_COVER_WIDTH;
+    }
+
+    /**
+     * @private
+     * @returns {void}
+     */
+    syncColorSchemeStyle() {
+        if (this.menuBox == null) {
+            return;
+        }
+        const colorScheme = this.interfaceSettings.get_string("color-scheme");
+        const preferLight = colorScheme === "prefer-light";
+        this.menuBox.remove_style_class_name("media-controls-dark");
+        this.menuBox.remove_style_class_name("media-controls-light");
+        this.menuBox.add_style_class_name(preferLight ? "media-controls-light" : "media-controls-dark");
     }
 
     /**
@@ -1089,13 +1267,15 @@ class PanelButton extends PanelMenu.Button {
             this.updateWidgets(WidgetFlags.PANEL_CONTROLS_PLAYPAUSE | WidgetFlags.MENU_CONTROLS_PLAYPAUSE);
             if (this.playerProxy.playbackStatus !== PlaybackStatus.PLAYING) {
                 this.buttonLabel?.pauseScrolling();
-                this.menuLabelTitle.pauseScrolling();
-                this.menuLabelSubtitle.pauseScrolling();
+                this.menuLabelTitle?.pauseScrolling();
+                this.menuLabelSubtitle?.pauseScrolling();
+                this.menuLabelAlbum?.pauseScrolling();
                 this.menuSlider?.pauseTransition();
             } else {
                 this.buttonLabel?.resumeScrolling();
-                this.menuLabelTitle.resumeScrolling();
-                this.menuLabelSubtitle.resumeScrolling();
+                this.menuLabelTitle?.resumeScrolling();
+                this.menuLabelSubtitle?.resumeScrolling();
+                this.menuLabelAlbum?.resumeScrolling();
                 this.menuSlider?.resumeTransition();
             }
         });
@@ -1345,6 +1525,11 @@ class PanelButton extends PanelMenu.Button {
      * @returns {void}
      */
     onDestroy() {
+        if (this.interfaceSettingsChangedId != null) {
+            this.interfaceSettings.disconnect(this.interfaceSettingsChangedId);
+            this.interfaceSettingsChangedId = null;
+        }
+        this.interfaceSettings = null;
         this.removeProxyListeners();
         this.playerProxy = null;
         // Null out references to child widgets before parent destroys them
@@ -1353,6 +1538,8 @@ class PanelButton extends PanelMenu.Button {
         this.menuImage = null;
         this.menuLabels = null;
         this.menuControls = null;
+        this.menuMainControls = null;
+        this.menuSecondaryControls = null;
         this.buttonIcon?.destroy();
         this.buttonLabel?.destroy();
         this.buttonControls?.destroy();
@@ -1370,8 +1557,10 @@ class PanelButton extends PanelMenu.Button {
             this.menuPlayerIcons.get_children().forEach((child) => child.destroy());
         }
         this.menuPlayerIcons = null;
+        this.menuPlayersExpanded = false;
         this.menuLabelTitle = null;
         this.menuLabelSubtitle = null;
+        this.menuLabelAlbum = null;
         if (this.doubleTapSourceId != null) {
             GLib.source_remove(this.doubleTapSourceId);
             this.doubleTapSourceId = null;

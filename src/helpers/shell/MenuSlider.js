@@ -55,16 +55,18 @@ class MenuSlider extends St.BoxLayout {
      *
      */
     constructor() {
-        super({ vertical: true });
+        super({ vertical: true, styleClass: "popup-menu-slider" });
         this.rate = 1.0;
         this.slider = new Slider.Slider(0);
-        this.textBox = new St.BoxLayout();
+        this.textBox = new St.BoxLayout({ styleClass: "popup-menu-slider-time-box" });
         this.elapsedLabel = new St.Label({
+            styleClass: "popup-menu-slider-time-label",
             text: "00:00",
             xExpand: true,
             xAlign: Clutter.ActorAlign.START,
         });
         this.durationLabel = new St.Label({
+            styleClass: "popup-menu-slider-time-label",
             text: "00:00",
             xExpand: true,
             xAlign: Clutter.ActorAlign.END,
@@ -131,8 +133,8 @@ class MenuSlider extends St.BoxLayout {
 
         this.textBox.add_child(this.elapsedLabel);
         this.textBox.add_child(this.durationLabel);
-        this.add_child(this.textBox);
         this.add_child(this.slider);
+        this.add_child(this.textBox);
         // Pause transition before adding to prevent auto-start
         this.transition.pause();
         this.slider.add_transition("progress", this.transition);

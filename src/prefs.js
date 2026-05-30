@@ -266,6 +266,9 @@ export default class MediaControlsPreferences extends ExtensionPreferences {
         this.bindSetting("scroll-pause-time", "sr-general-scroll-pause-time", "value");
         this.bindSetting("hide-media-notification", "sr-general-hide-media-notification", "active");
         this.bindSetting("show-track-slider", "sr-general-show-track-slider", "active");
+        this.bindSetting("show-popup-title", "sr-general-show-popup-title", "active");
+        this.bindSetting("show-popup-artist", "sr-general-show-popup-artist", "active");
+        this.bindSetting("show-popup-album", "sr-general-show-popup-album", "active");
         this.bindSetting("show-label", "sr-panel-show-label", "active");
         this.bindSetting("show-control-icons", "sr-panel-show-controls", "active");
         this.bindSetting("show-control-icons-play", "sr-panel-show-play", "active");

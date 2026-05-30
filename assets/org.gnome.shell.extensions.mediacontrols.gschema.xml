@@ -43,6 +43,15 @@
     <key name="show-track-slider" type="b">
       <default>false</default>
     </key>
+    <key name="show-popup-title" type="b">
+      <default>true</default>
+    </key>
+    <key name="show-popup-artist" type="b">
+      <default>true</default>
+    </key>
+    <key name="show-popup-album" type="b">
+      <default>true</default>
+    </key>
     <key name="show-label" type="b">
       <default>true</default>
     </key>
@@ -74,7 +83,7 @@
       <default>true</default>
     </key>
     <key name="cover-art-radius" type="u">
-      <default>0</default>
+      <default>18</default>
     </key>
     <key name="extension-position" enum="org.gnome.shell.extensions.mediacontrols.positions">
       <default>'Center'</default>
