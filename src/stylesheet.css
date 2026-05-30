@@ -40,61 +40,135 @@
 }
 
 .popup-menu-container {
-    padding: 12px;
+    padding: 0;
 }
 
 .popup-menu-box {
     border-width: 0px;
+    padding: 18px 24px 22px;
+    spacing: 18px;
+    min-width: 244px;
 }
 
 .popup-menu-box > * {
-    margin-top: 6px;
-    margin-bottom: 6px;
+    margin-top: 0;
+    margin-bottom: 0;
+}
+
+.popup-menu-players {
+    spacing: 8px;
+}
+
+.popup-menu-player-pill {
+    border-radius: 99px;
+    padding: 8px 12px;
+    spacing: 8px;
+}
+
+.popup-menu-player-pill-icon {
+    icon-size: 16px;
+}
+
+.popup-menu-player-pin {
+    border-radius: 99px;
+    icon-size: 16px;
+    padding: 2px;
+}
+
+.popup-menu-player-pin:checked {
+    opacity: 255;
 }
 
 .popup-menu-player-icons {
-    margin-top: 6px;
-    border-radius: 6px;
+    spacing: 6px;
+}
+
+.popup-menu-player-icons-button {
+    border-radius: 99px;
+    padding: 8px 12px;
 }
 
 .popup-menu-player-icons-icon {
-    padding: 6px;
-    background-color: rgba(0, 0, 0, 0.125);
-    transition-property: background-color;
-    transition-duration: 200ms;
-}
-
-.popup-menu-player-icons-icon-last {
-    border-radius: 0px 6px 6px 0px;
-}
-
-.popup-menu-player-icons-icon-first {
-    border-radius: 6px 0px 0px 6px;
-}
-
-.popup-menu-player-icons-icon:hover {
-    background-color: rgba(160, 160, 160, 0.25);
-}
-
-.popup-menu-player-icons-icon-active {
-    background-color: rgba(160, 160, 160, 0.25);
+    icon-size: 16px;
 }
 
 .popup-menu-player-label {
-    font-size: small;
-    margin-right: 6px;
-    margin-left: 6px;
+    font-weight: bold;
+}
+
+.popup-menu-cover-art {
+    border-radius: 18px;
+    margin-top: 4px;
+    margin-bottom: 4px;
+}
+
+.popup-menu-labels {
+    spacing: 4px;
 }
 
 .popup-menu-label-title {
-    font-size: large;
+    font-weight: bold;
+    font-size: 1em;
+}
+
+.popup-menu-label-subtitle {
+    font-size: 0.95em;
+}
+
+.popup-menu-slider {
+    spacing: 6px;
+}
+
+.popup-menu-slider-time-box {
+    padding-left: 0;
+    padding-right: 0;
+}
+
+.popup-menu-slider-time-label {
+    font-feature-settings: "tnum";
+}
+
+.popup-menu-controls {
+    spacing: 12px;
+}
+
+.popup-menu-main-controls {
+    spacing: 12px;
+}
+
+.popup-menu-secondary-controls {
+    spacing: 10px;
+}
+
+.popup-menu-control-button {
+    border-radius: 99px;
+    min-height: 38px;
+    min-width: 38px;
+    padding: 0;
+}
+
+.popup-menu-control-button-circular {
+    width: 38px;
+    height: 38px;
+}
+
+.popup-menu-control-button-primary {
+    min-width: 84px;
+    width: 84px;
+    height: 44px;
+}
+
+.popup-menu-control-button-state {
+    width: 34px;
+    height: 34px;
+    min-width: 34px;
+    min-height: 34px;
 }
 
 .popup-menu-control-icon {
-    padding: 6px;
-    border-radius: 99px;
+    icon-size: 18px;
 }
 
-.popup-menu-control-icon:hover {
-    background-color: rgba(160, 160, 160, 0.25);
+.popup-menu-control-button-primary .popup-menu-control-icon {
+    icon-size: 20px;
 }

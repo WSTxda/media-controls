@@ -111,6 +111,16 @@ class PanelButton extends PanelMenu.Button {
      * @type {St.BoxLayout}
      */
     menuControls;
+    /**
+     * @private
+     * @type {St.BoxLayout}
+     */
+    menuMainControls;
+    /**
+     * @private
+     * @type {St.BoxLayout}
+     */
+    menuSecondaryControls;
 
     /**
      * @private
@@ -148,6 +158,11 @@ class PanelButton extends PanelMenu.Button {
      * @type {InstanceType<typeof ScrollingLabel>}
      */
     menuLabelSubtitle;
+    /**
+     * @private
+     * @type {InstanceType<typeof ScrollingLabel>}
+     */
+    menuLabelAlbum;
 
     /**
      * @private
@@ -321,11 +336,14 @@ class PanelButton extends PanelMenu.Button {
         if (this.menuPlayers == null) {
             this.menuPlayers = new St.BoxLayout({
                 vertical: true,
+                styleClass: "popup-menu-players",
             });
         }
         if (this.menuPlayersTextBox == null) {
             this.menuPlayersTextBox = new St.BoxLayout({
-                marginBottom: 3,
+                styleClass: "button popup-menu-player-pill",
+                reactive: true,
+                trackHover: true,
             });
         }
         const menuColoredClass = this.extension.coloredPlayerIconMenu ? "colored-icon" : "symbolic-icon";
@@ -343,29 +361,25 @@ class PanelButton extends PanelMenu.Button {
         }
         if (this.menuPlayersTextBoxIcon == null) {
             this.menuPlayersTextBoxIcon = new St.Icon({
-                styleClass: `popup-menu-icon ${menuColoredClass}`,
-                yAlign: Clutter.ActorAlign.END,
-                xAlign: Clutter.ActorAlign.END,
-                xExpand: true,
-                yExpand: true,
+                styleClass: `popup-menu-icon popup-menu-player-pill-icon ${menuColoredClass}`,
+                yAlign: Clutter.ActorAlign.CENTER,
             });
         }
         if (this.menuPlayersTextBoxLabel == null) {
             this.menuPlayersTextBoxLabel = new St.Label({
                 styleClass: "popup-menu-player-label",
-                yAlign: Clutter.ActorAlign.END,
-                yExpand: true,
+                yAlign: Clutter.ActorAlign.CENTER,
+                xAlign: Clutter.ActorAlign.CENTER,
+                xExpand: true,
             });
         }
         if (this.menuPlayersTextBoxPin == null) {
             this.menuPlayersTextBoxPin = new St.Icon({
                 iconName: "view-pin-symbolic",
-                styleClass: "popup-menu-icon",
-                yAlign: Clutter.ActorAlign.END,
-                xAlign: Clutter.ActorAlign.START,
-                yExpand: true,
-                xExpand: true,
+                styleClass: "popup-menu-icon popup-menu-player-pin",
+                yAlign: Clutter.ActorAlign.CENTER,
                 reactive: true,
+                trackHover: true,
             });
 
             if (typeof Clutter.ClickGesture !== "undefined") {
@@ -402,7 +416,9 @@ class PanelButton extends PanelMenu.Button {
             });
         } else if (players.length === 1 && this.menuPlayerIcons != null) {
             this.menuPlayerIcons.get_children().forEach((child) => child.destroy());
-            this.menuPlayers.remove_child(this.menuPlayerIcons);
+            if (this.menuPlayerIcons.get_parent() === this.menuPlayers) {
+                this.menuPlayers.remove_child(this.menuPlayerIcons);
+            }
             this.menuPlayerIcons.destroy();
             this.menuPlayerIcons = null;
         } else if (this.menuPlayerIcons != null) {
@@ -410,6 +426,7 @@ class PanelButton extends PanelMenu.Button {
         }
         const isPinned = this.playerProxy.isPlayerPinned();
         this.menuPlayersTextBoxPin.opacity = isPinned ? 255 : 160;
+        this.menuPlayersTextBoxPin.set_style_pseudo_class(isPinned ? "checked" : null);
         if (this.menuPlayerIcons != null) {
             this.menuPlayerIcons.opacity = isPinned ? 160 : 255;
         }
@@ -421,64 +438,39 @@ class PanelButton extends PanelMenu.Button {
             const appIcon = app?.get_icon() ?? Gio.Icon.new_for_string("audio-x-generic-symbolic");
             if (isSamePlayer) {
                 this.menuPlayersTextBoxLabel.text = appName;
-                if (this.menuPlayersTextBoxIcon?.get_parent() != null) {
-                    this.menuPlayersTextBox.remove_child(this.menuPlayersTextBoxIcon);
-                }
-                if (this.menuPlayersTextBoxPin.get_parent() != null) {
-                    this.menuPlayersTextBox.remove_child(this.menuPlayersTextBoxPin);
-                }
-                if (players.length > 1) {
-                    this.menuPlayersTextBoxIcon.gicon = null;
-                    this.menuPlayersTextBoxLabel.xAlign = Clutter.ActorAlign.END;
-                    this.menuPlayersTextBoxLabel.xExpand = true;
-                    this.menuPlayersTextBox.insert_child_at_index(this.menuPlayersTextBoxPin, 1);
-                } else {
-                    this.menuPlayersTextBoxIcon.gicon = appIcon;
-                    this.menuPlayersTextBox.insert_child_at_index(this.menuPlayersTextBoxIcon, 0);
-                    this.menuPlayersTextBoxLabel.xAlign = Clutter.ActorAlign.START;
-                    this.menuPlayersTextBoxLabel.xExpand = true;
-                }
+                this.menuPlayersTextBoxIcon.gicon = appIcon;
             }
             if (players.length > 1) {
+                const button = new St.Button({
+                    name: `player-${i}`,
+                    styleClass: "button popup-menu-player-icons-button",
+                    reactive: isPinned === false,
+                    trackHover: isPinned === false,
+                    canFocus: isPinned === false,
+                    xAlign: Clutter.ActorAlign.FILL,
+                    xExpand: true,
+                    toggleMode: true,
+                    checked: isSamePlayer,
+                });
                 const icon = new St.Icon({
                     styleClass: `popup-menu-icon popup-menu-player-icons-icon ${menuColoredClass}`,
                     gicon: appIcon,
-                    reactive: isPinned === false,
-                    trackHover: isPinned === false,
-                    xAlign: Clutter.ActorAlign.FILL,
+                    xAlign: Clutter.ActorAlign.CENTER,
                     xExpand: true,
                 });
-                if (i === 0) {
-                    icon.add_style_class_name("popup-menu-player-icons-icon-first");
-                } else if (i === players.length - 1) {
-                    icon.add_style_class_name("popup-menu-player-icons-icon-last");
+                button.set_child(icon);
+                if (!isSamePlayer) {
+                    button.connect("clicked", () => {
+                        this.updateProxy(player);
+                    });
                 }
-                if (isSamePlayer) {
-                    icon.add_style_class_name("popup-menu-player-icons-icon-active");
-                } else {
-                    if (typeof Clutter.ClickGesture !== "undefined") {
-                        const clickAction = new Clutter.ClickGesture();
-                        if (clickAction.set_recognize_on_press) {
-                            clickAction.set_recognize_on_press(true);
-                        }
-                        clickAction.connect("recognize", () => {
-                            this.updateProxy(player);
-                            return Clutter.EVENT_STOP;
-                        });
-                        icon.add_action(clickAction);
-                    } else {
-                        const clickAction = new Clutter.ClickAction();
-                        clickAction.connect("clicked", () => {
-                            this.updateProxy(player);
-                        });
-                        icon.add_action(clickAction);
-                    }
-                }
-                this.menuPlayerIcons.add_child(icon);
+                this.menuPlayerIcons.add_child(button);
             }
         }
-        if (this.menuPlayersTextBoxLabel.get_parent() == null) {
-            this.menuPlayersTextBox.add_child(this.menuPlayersTextBoxLabel);
+        for (const child of [this.menuPlayersTextBoxIcon, this.menuPlayersTextBoxLabel, this.menuPlayersTextBoxPin]) {
+            if (child.get_parent() !== this.menuPlayersTextBox) {
+                this.menuPlayersTextBox.add_child(child);
+            }
         }
         if (this.menuPlayersTextBox.get_parent() == null) {
             this.menuPlayers.add_child(this.menuPlayersTextBox);
@@ -499,6 +491,7 @@ class PanelButton extends PanelMenu.Button {
     async addMenuImage() {
         if (this.menuImage == null) {
             this.menuImage = new St.Icon({
+                styleClass: "popup-menu-cover-art",
                 xExpand: false,
                 yExpand: false,
                 xAlign: Clutter.ActorAlign.CENTER,
@@ -658,15 +651,14 @@ class PanelButton extends PanelMenu.Button {
         if (this.menuLabels == null) {
             this.menuLabels = new St.BoxLayout({
                 vertical: true,
+                styleClass: "popup-menu-labels",
             });
         }
-        if (this.menuLabelTitle != null) {
-            this.menuLabels.remove_child(this.menuLabelTitle);
-            this.menuLabelTitle.destroy();
-        }
-        if (this.menuLabelSubtitle != null) {
-            this.menuLabels.remove_child(this.menuLabelSubtitle);
-            this.menuLabelSubtitle.destroy();
+        for (const label of [this.menuLabelTitle, this.menuLabelSubtitle, this.menuLabelAlbum]) {
+            if (label?.get_parent() === this.menuLabels) {
+                this.menuLabels.remove_child(label);
+            }
+            label?.destroy();
         }
         const width = this.getMenuItemWidth();
         this.menuLabelTitle = new ScrollingLabel({
@@ -679,18 +671,27 @@ class PanelButton extends PanelMenu.Button {
         const artistText = this.playerProxy.metadata["xesam:artist"]?.join(", ") || _("Unknown artist");
         const albumText = this.playerProxy.metadata["xesam:album"] || "";
         this.menuLabelSubtitle = new ScrollingLabel({
-            text: albumText === "" ? artistText : `${artistText} / ${albumText}`,
+            text: artistText,
             isScrolling: this.extension.scrollLabels,
             initPaused: this.playerProxy.playbackStatus !== PlaybackStatus.PLAYING,
             direction: Clutter.TimelineDirection.BACKWARD,
             width,
             scrollSpeed: this.extension.scrollSpeed,
         });
+        this.menuLabelAlbum = new ScrollingLabel({
+            text: albumText || _("Unknown album"),
+            isScrolling: this.extension.scrollLabels,
+            initPaused: this.playerProxy.playbackStatus !== PlaybackStatus.PLAYING,
+            width,
+            scrollSpeed: this.extension.scrollSpeed,
+        });
         this.menuLabelTitle.label.add_style_class_name("popup-menu-label-title");
-        this.menuLabelTitle.box.xAlign = Clutter.ActorAlign.CENTER;
-        this.menuLabelSubtitle.box.xAlign = Clutter.ActorAlign.CENTER;
-        this.menuLabels.add_child(this.menuLabelTitle);
-        this.menuLabels.add_child(this.menuLabelSubtitle);
+        this.menuLabelSubtitle.label.add_style_class_name("popup-menu-label-subtitle");
+        this.menuLabelAlbum.label.add_style_class_name("popup-menu-label-subtitle");
+        for (const label of [this.menuLabelTitle, this.menuLabelSubtitle, this.menuLabelAlbum]) {
+            label.box.xAlign = Clutter.ActorAlign.CENTER;
+            this.menuLabels.add_child(label);
+        }
         if (this.menuLabels.get_parent() == null) {
             this.menuBox.add_child(this.menuLabels);
             debugLog("Added menu labels");
@@ -735,7 +736,26 @@ class PanelButton extends PanelMenu.Button {
      */
     addMenuControls(flags) {
         if (this.menuControls == null) {
-            this.menuControls = new St.BoxLayout();
+            this.menuControls = new St.BoxLayout({
+                vertical: true,
+                styleClass: "popup-menu-controls",
+            });
+        }
+        if (this.menuMainControls == null) {
+            this.menuMainControls = new St.BoxLayout({
+                styleClass: "popup-menu-main-controls",
+            });
+        }
+        if (this.menuSecondaryControls == null) {
+            this.menuSecondaryControls = new St.BoxLayout({
+                styleClass: "popup-menu-secondary-controls",
+            });
+        }
+        if (this.menuMainControls.get_parent() == null) {
+            this.menuControls.add_child(this.menuMainControls);
+        }
+        if (this.menuSecondaryControls.get_parent() == null) {
+            this.menuControls.add_child(this.menuSecondaryControls);
         }
         if (flags & WidgetFlags.MENU_CONTROLS_LOOP) {
             this.addMenuControlIcon(
@@ -806,41 +826,51 @@ class PanelButton extends PanelMenu.Button {
      * @returns {void}
      */
     addMenuControlIcon(options, reactive, onClick) {
-        const icon = new St.Icon({
+        const isPrimary = options.name === ControlIconOptions.PLAY.name;
+        const isSecondary =
+            options.name === ControlIconOptions.LOOP_NONE.name || options.name === ControlIconOptions.SHUFFLE_ON.name;
+        const isActive =
+            options === ControlIconOptions.LOOP_TRACK ||
+            options === ControlIconOptions.LOOP_PLAYLIST ||
+            options === ControlIconOptions.SHUFFLE_OFF;
+        const targetBox = isSecondary ? this.menuSecondaryControls : this.menuMainControls;
+        const styleClasses = [
+            "button",
+            "popup-menu-control-button",
+            isPrimary ? "popup-menu-control-button-primary" : "popup-menu-control-button-circular",
+            isSecondary ? "popup-menu-control-button-state" : "",
+        ]
+            .filter(Boolean)
+            .join(" ");
+        const button = new St.Button({
             name: options.name,
-            iconName: options.iconName,
-            styleClass: "popup-menu-icon popup-menu-control-icon",
+            styleClass: styleClasses,
             trackHover: reactive,
             opacity: reactive ? 255 : 160,
             reactive,
+            canFocus: reactive,
+            toggleMode: isPrimary || isSecondary,
+            checked: isPrimary ? reactive : isActive,
             ...options.menuProps.options,
         });
+        const icon = new St.Icon({
+            iconName: options.iconName,
+            styleClass: "popup-menu-icon popup-menu-control-icon",
+        });
+        button.set_child(icon);
+        button.connect("clicked", () => {
+            onClick();
+        });
 
-        if (typeof Clutter.ClickGesture !== "undefined") {
-            const clickGesture = new Clutter.ClickGesture();
-            clickGesture.set_n_clicks_required(1);
-            if (clickGesture.set_recognize_on_press) {
-                clickGesture.set_recognize_on_press(true);
+        for (const controlsBox of [this.menuMainControls, this.menuSecondaryControls]) {
+            const oldIcon = find_child_by_name(controlsBox, options.name);
+            if (oldIcon?.get_parent() === controlsBox) {
+                controlsBox.remove_child(oldIcon);
+                oldIcon.destroy();
             }
-            clickGesture.connect("recognize", () => {
-                onClick();
-                return Clutter.EVENT_STOP;
-            });
-            icon.add_action(clickGesture);
-        } else {
-            const clickAction = new Clutter.ClickAction();
-            clickAction.connect("clicked", () => {
-                onClick();
-            });
-            icon.add_action(clickAction);
         }
-
-        const oldIcon = find_child_by_name(this.menuControls, options.name);
-        if (oldIcon?.get_parent() === this.menuControls) {
-            this.menuControls.replace_child(oldIcon, icon);
-        } else {
-            this.menuControls.insert_child_at_index(icon, options.menuProps.index);
-        }
+        const targetIndex = Math.min(options.menuProps.index, targetBox.get_children().length);
+        targetBox.insert_child_at_index(button, targetIndex);
     }
 
     /**
@@ -1091,11 +1121,13 @@ class PanelButton extends PanelMenu.Button {
                 this.buttonLabel?.pauseScrolling();
                 this.menuLabelTitle.pauseScrolling();
                 this.menuLabelSubtitle.pauseScrolling();
+                this.menuLabelAlbum?.pauseScrolling();
                 this.menuSlider?.pauseTransition();
             } else {
                 this.buttonLabel?.resumeScrolling();
                 this.menuLabelTitle.resumeScrolling();
                 this.menuLabelSubtitle.resumeScrolling();
+                this.menuLabelAlbum?.resumeScrolling();
                 this.menuSlider?.resumeTransition();
             }
         });
