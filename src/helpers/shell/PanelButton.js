@@ -791,7 +791,7 @@ class PanelButton extends PanelMenu.Button {
                 width,
                 scrollSpeed: this.extension.scrollSpeed,
             });
-            this.menuLabelAlbum.label.add_style_class_name("popup-menu-label-subtitle");
+            this.menuLabelAlbum.label.add_style_class_name("popup-menu-label-album");
             labels.push(this.menuLabelAlbum);
         }
         for (const label of labels) {

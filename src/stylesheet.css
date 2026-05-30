@@ -125,6 +125,11 @@
     font-size: 1em;
 }
 
+.popup-menu-label-album {
+    font-size: 0.92em;
+    opacity: 180;
+}
+
 .popup-menu-slider {
     spacing: 7px;
 }
@@ -189,6 +194,14 @@
     height: 34px;
     min-width: 34px;
     min-height: 34px;
+}
+
+.popup-menu-control-button-state:checked {
+    background-color: rgba(255, 255, 255, 0.22);
+}
+
+.media-controls-light .popup-menu-control-button-state:checked {
+    background-color: rgba(0, 0, 0, 0.22);
 }
 
 .popup-menu-control-icon {

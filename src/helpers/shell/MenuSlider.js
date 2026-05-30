@@ -133,8 +133,8 @@ class MenuSlider extends St.BoxLayout {
 
         this.textBox.add_child(this.elapsedLabel);
         this.textBox.add_child(this.durationLabel);
-        this.add_child(this.textBox);
         this.add_child(this.slider);
+        this.add_child(this.textBox);
         // Pause transition before adding to prevent auto-start
         this.transition.pause();
         this.slider.add_transition("progress", this.transition);
