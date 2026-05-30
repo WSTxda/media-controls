@@ -47,7 +47,9 @@
     border-width: 0px;
     padding: 18px 24px 22px;
     spacing: 18px;
+    width: 244px;
     min-width: 244px;
+    max-width: 244px;
 }
 
 .popup-menu-box > * {
@@ -56,23 +58,25 @@
 }
 
 .popup-menu-players {
-    spacing: 8px;
+    spacing: 7px;
 }
 
 .popup-menu-player-pill {
-    border-radius: 99px;
-    padding: 8px 12px;
+    border-radius: 18px;
+    padding: 5px 10px;
     spacing: 8px;
+    min-height: 24px;
+    max-height: 28px;
 }
 
 .popup-menu-player-pill-icon {
-    icon-size: 16px;
+    icon-size: 14px;
 }
 
 .popup-menu-player-pin {
     border-radius: 99px;
-    icon-size: 16px;
-    padding: 2px;
+    icon-size: 14px;
+    padding: 1px;
 }
 
 .popup-menu-player-pin:checked {
@@ -84,22 +88,23 @@
 }
 
 .popup-menu-player-icons-button {
-    border-radius: 99px;
-    padding: 8px 12px;
+    border-radius: 18px;
+    padding: 6px 10px;
+    min-height: 24px;
 }
 
 .popup-menu-player-icons-icon {
-    icon-size: 16px;
+    icon-size: 15px;
 }
 
 .popup-menu-player-label {
     font-weight: bold;
+    font-size: 0.95em;
 }
 
 .popup-menu-cover-art {
-    border-radius: 18px;
-    margin-top: 4px;
-    margin-bottom: 4px;
+    margin-top: 3px;
+    margin-bottom: 1px;
 }
 
 .popup-menu-labels {
@@ -116,7 +121,7 @@
 }
 
 .popup-menu-slider {
-    spacing: 6px;
+    spacing: 7px;
 }
 
 .popup-menu-slider-time-box {
@@ -142,20 +147,36 @@
 
 .popup-menu-control-button {
     border-radius: 99px;
-    min-height: 38px;
-    min-width: 38px;
+    min-height: 40px;
+    min-width: 40px;
     padding: 0;
 }
 
 .popup-menu-control-button-circular {
-    width: 38px;
-    height: 38px;
+    width: 40px;
+    height: 40px;
 }
 
 .popup-menu-control-button-primary {
-    min-width: 84px;
-    width: 84px;
-    height: 44px;
+    min-width: 88px;
+    width: 88px;
+    height: 46px;
+}
+
+.media-controls-dark .popup-menu-control-button-primary,
+.media-controls-dark .popup-menu-control-button-primary:checked,
+.media-controls-dark .popup-menu-control-button-primary:hover,
+.media-controls-dark .popup-menu-control-button-primary:active {
+    background-color: #e6e6e7;
+    color: #2d2d32;
+}
+
+.media-controls-light .popup-menu-control-button-primary,
+.media-controls-light .popup-menu-control-button-primary:checked,
+.media-controls-light .popup-menu-control-button-primary:hover,
+.media-controls-light .popup-menu-control-button-primary:active {
+    background-color: #38383c;
+    color: #ffffff;
 }
 
 .popup-menu-control-button-state {

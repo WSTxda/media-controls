@@ -77,6 +77,24 @@ export default class MediaControls extends Extension {
      * @public
      * @type {boolean}
      */
+    showPopupTitle;
+
+    /**
+     * @public
+     * @type {boolean}
+     */
+    showPopupArtist;
+
+    /**
+     * @public
+     * @type {boolean}
+     */
+    showPopupAlbum;
+
+    /**
+     * @public
+     * @type {boolean}
+     */
     showLabel;
 
     /**
@@ -342,6 +360,9 @@ export default class MediaControls extends Extension {
         this.scrollPauseTime = this.settings.get_uint("scroll-pause-time") * 1000;
         this.hideMediaNotification = this.settings.get_boolean("hide-media-notification");
         this.showTrackSlider = this.settings.get_boolean("show-track-slider");
+        this.showPopupTitle = this.settings.get_boolean("show-popup-title");
+        this.showPopupArtist = this.settings.get_boolean("show-popup-artist");
+        this.showPopupAlbum = this.settings.get_boolean("show-popup-album");
         this.showLabel = this.settings.get_boolean("show-label");
         this.showPlayerIcon = this.settings.get_boolean("show-player-icon");
         this.showControlIcons = this.settings.get_boolean("show-control-icons");
@@ -392,6 +413,18 @@ export default class MediaControls extends Extension {
         this.settings.connect("changed::show-track-slider", () => {
             this.showTrackSlider = this.settings.get_boolean("show-track-slider");
             this.panelBtn?.updateWidgets(WidgetFlags.MENU_SLIDER);
+        });
+        this.settings.connect("changed::show-popup-title", () => {
+            this.showPopupTitle = this.settings.get_boolean("show-popup-title");
+            this.panelBtn?.updateWidgets(WidgetFlags.MENU_LABELS);
+        });
+        this.settings.connect("changed::show-popup-artist", () => {
+            this.showPopupArtist = this.settings.get_boolean("show-popup-artist");
+            this.panelBtn?.updateWidgets(WidgetFlags.MENU_LABELS);
+        });
+        this.settings.connect("changed::show-popup-album", () => {
+            this.showPopupAlbum = this.settings.get_boolean("show-popup-album");
+            this.panelBtn?.updateWidgets(WidgetFlags.MENU_LABELS);
         });
         this.settings.connect("changed::show-label", () => {
             this.showLabel = this.settings.get_boolean("show-label");
@@ -788,6 +821,9 @@ export default class MediaControls extends Extension {
         this.scrollLabels = null;
         this.scrollSpeed = null;
         this.showLabel = null;
+        this.showPopupTitle = null;
+        this.showPopupArtist = null;
+        this.showPopupAlbum = null;
         this.showPlayerIcon = null;
         this.showControlIcons = null;
         this.showControlIconsPlay = null;
